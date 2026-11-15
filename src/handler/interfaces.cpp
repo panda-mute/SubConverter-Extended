@@ -3810,6 +3810,7 @@ struct ParsedSubRequest {
   tribool generate_classical_rule_provider;
   tribool tls13;
   tribool provider_proxy_direct;
+  tribool provider_path;
 };
 
 static std::string parseSubRequestArguments(Request &request,
@@ -3947,6 +3948,16 @@ static std::string parseSubRequestArguments(Request &request,
   parsed.tls13 = getUrlArg(argument, "tls13");
   parsed.provider_proxy_direct =
       getUrlArg(argument, "provider_proxy_direct");
+  const std::string provider_path = getUrlArg(argument, "provider_path");
+  if (!provider_path.empty()) {
+    bool enabled = true;
+    if (!parseProxyProviderDirect(provider_path, enabled)) {
+      response.status_code = 400;
+      return "Invalid request: provider_path must be true, false, 1 or 0.\n"
+             "无效请求：provider_path 必须为 true、false、1 或 0。\n";
+    }
+    parsed.provider_path = enabled;
+  }
   parsed.explain.upload_requested = parsed.upload.get(false);
   if (parsed.explain_mode && parsed.upload) {
     parsed.upload = false;
@@ -4045,6 +4056,13 @@ static std::string buildEffectiveSubPolicy(Request &request,
            "请提供 target 和 url；只有启用已配置的插入节点时才能省略 url。";
   }
 
+  if (!parsed.provider_path.is_undef() && parsed.target != "clash" &&
+      parsed.target != "clashr") {
+    response.status_code = 400;
+    return "Invalid request: provider_path is supported only for "
+           "target=clash or target=clashr.\n"
+           "无效请求：provider_path 仅支持 target=clash 或 target=clashr。\n";
+  }
   std::string provider_headers_error;
   if (!parsed.provider_headers.empty() && parsed.target != "clash" &&
       parsed.target != "stash") {
@@ -4126,6 +4144,7 @@ static std::string buildEffectiveSubPolicy(Request &request,
       parsed.generate_classical_rule_provider.get();
   policy.generator.provider_proxy_direct =
       parsed.provider_proxy_direct.get(settings.proxyProviderDirect);
+  policy.generator.provider_path = parsed.provider_path.get(true);
   // 无论 expand 取何值，均强制使用 Mihomo 新字段名（proxy-groups / rules）
   // 避免因全局配置为旧字段名而导致 Mihomo 无法识别
   policy.generator.clash_new_field_name = true;
@@ -5713,6 +5732,8 @@ static SubStageResponse processSubscriptionNodes(
                           getMD5(identity) + ".yaml";
         }
         provider.headers = provider_headers;
+        if (!ext.provider_path)
+          provider.path.clear();
         provider.filter = buildProviderRemarkFilter(lIncludeRemarks);
         provider.exclude_filter =
             buildProviderRemarkFilter(lExcludeRemarks);
@@ -5731,7 +5752,8 @@ static SubStageResponse processSubscriptionNodes(
               "Provider_Auto_" +
               std::to_string(++generated_explain_provider_index);
           explain_provider.name = safe_name;
-          explain_provider.path = "./providers/" + safe_name + ".yaml";
+          if (ext.provider_path)
+            explain_provider.path = "./providers/" + safe_name + ".yaml";
         } else {
           explain_provider.name = provider.name;
           explain_provider.path = provider.path;
@@ -7375,6 +7397,11 @@ static std::string assembleSubResponse(
     addSwitchParameter("tls13", ext.tls13.get(false), ext.tls13);
     addSwitchParameter("provider_proxy_direct", ext.provider_proxy_direct,
                        argProviderProxyDirect);
+    addParameter("provider_path", boolString(ext.provider_path),
+                 ext.providers.empty()
+                     ? "ignored"
+                     : (parsed.provider_path.is_undef() ? "defaulted" : "applied"),
+                 "Controls the explicit cache path in generated Mihomo providers.");
     std::string profile_effective = "not used";
     std::string profile_status = "ignored";
     std::string profile_source = "request";
@@ -7406,8 +7433,8 @@ static std::string assembleSubResponse(
         "upload", "emoji", "add_emoji", "remove_emoji", "append_type",
         "tfo", "udp", "list", "sort", "sort_script", "script", "insert",
         "scv", "fdn", "expand", "append_info", "prepend", "classic",
-        "tls13", "provider_proxy_direct", "provider_headers", "explain",
-        "profile_data", "token"};
+        "tls13", "provider_proxy_direct", "provider_path", "provider_headers",
+        "explain", "profile_data", "token"};
     for (const auto &arg : argument) {
       if (known_parameters.find(arg.first) != known_parameters.end())
         continue;

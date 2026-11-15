@@ -154,6 +154,7 @@ struct extra_settings {
   std::string clash_proxy_groups_style = "flow";
   bool use_proxy_provider = true;       // 默认启用 proxy-provider 模式
   bool provider_proxy_direct = kDefaultProxyProviderDirect;
+  bool provider_path = true; // 是否显式生成 Mihomo Provider 缓存路径
   std::vector<ProxyProvider> providers; // provider 列表
   std::vector<QuanXServerRemote> quanx_server_remotes;
   std::vector<SurgePolicyPathResource> surge_policy_paths;

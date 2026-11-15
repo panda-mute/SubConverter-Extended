@@ -2244,7 +2244,8 @@ static void proxyToClashImpl(std::vector<Proxy> &nodes, YAML::Node &yamlnode,
       setClashInteger(single_provider["interval"], p.interval);
       if (p.proxy_direct)
         single_provider["proxy"] = std::string("DIRECT");
-      single_provider["path"] = p.path;
+      if (!p.path.empty())
+        single_provider["path"] = p.path;
 
       // 添加过滤器
       if (!p.filter.empty()) {

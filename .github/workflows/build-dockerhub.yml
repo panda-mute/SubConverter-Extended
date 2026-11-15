@@ -31,6 +31,7 @@ concurrency:
 jobs:
   source-head:
     name: "🧭 Verify Current Source Head"
+    if: github.repository == 'Aethersailor/SubConverter-Extended'
     runs-on: ubuntu-latest
     outputs:
       current: ${{ steps.verify.outputs.current }}

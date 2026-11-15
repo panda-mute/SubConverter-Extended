@@ -51,6 +51,20 @@ UA 先按 URI 组件百分号编码，再将组合后的来源字符串编码为
 
 总开关开启后，服务端解析、`list=true` 和混合输入中的直接节点保持原有参数语义；其中 `emoji=false` 仍表示去旧、不添加，不能用它代替总开关关闭。开发验证应覆盖三种配置格式的开启、关闭、缺省及重载删除字段，检查请求与外部配置不能绕过关闭状态，并验证原有 rename、混合输入、传统输出和远程订阅模式。开启状态需与改动前的结果对照，确认 Provider 的订阅地址、缓存路径和其他字段不变。测试使用仓库外临时用例，不新增仓库测试或 CI 门禁。
 
+## 省略 Provider 路径的开发验证
+
+`target=clash` / `target=clashr` 支持请求参数 `provider_path=false`，使生成的 HTTP `proxy-providers` 省略 `path`，由客户端管理缓存路径。省略该参数或设置 `true` 时保持原有路径生成规则；也接受 `1` / `0`，非法非空值和其他目标返回 HTTP 400。`list=true` 或没有 HTTP Provider 时该选项不影响输出。`explain=true` 同步显示实际路径和选项状态。
+
+例如 `/sub?target=clash&provider_path=false&url=provider%3AoixCloud%2Cinterval%3A3600%2Chttps%3A%2F%2Fexample.com%2Fsub` 会生成名为 `oixCloud`、更新间隔为 3600 秒且没有 `path` 的 Provider，并保留默认健康检查。实际订阅 URL 应整体编码到 `url` 参数中，尤其是包含 `&` 的地址。
+
+人工验证应比较参数缺省、`true` 和 `false` 的输出，确认名称、URL、更新间隔、健康检查和策略组引用不变，并检查 explain、混合节点、非法值和其他目标。省略路径后缓存身份由客户端决定，显式 `ua:` 不再通过后端生成的路径隔离缓存；需要按 UA 隔离缓存时保留默认路径行为。
+
+## Fork Docker 自动构建
+
+Fork 的 `fork-docker.yml` 在推送 `master` / `dev` 或手动运行时，使用仓库锁定的依赖构建并推送 `linux/amd64` 镜像。需要在 GitHub 仓库 Settings → Secrets and variables → Actions 配置 `DOCKERHUB_USERNAME` 和具有目标镜像仓库写入权限的 `DOCKERHUB_TOKEN` secrets。镜像默认发布到 `<DOCKERHUB_USERNAME>/subconverter-extended`；可用 Actions variable `DOCKERHUB_REPOSITORY` 指定其他 `namespace/image`。
+
+`master` 推送发布 `master`、`latest` 和 `sha-<完整提交 SHA>` 标签；`dev` 发布 `dev` 和 SHA 标签。首次使用 fork 时需在 Actions 页面启用工作流。上游完整构建流程仅在 `Aethersailor/SubConverter-Extended` 运行。
+
 ## 敏感信息和安全问题
 
 不要在 Issue、PR、日志、截图、样例或复现数据中提交真实订阅 URL、节点凭据、Token、Cookie、私有主机名或其他秘密。使用 `example.com`、保留的测试网段和明确的占位符构造最小复现。
